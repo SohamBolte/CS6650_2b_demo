@@ -24,6 +24,7 @@ data "aws_iam_role" "lab_role" {
 
 module "ecs" {
   source             = "./modules/ecs"
+  depends_on = [docker_registry_image.app]
   service_name       = var.service_name
   image              = "${module.ecr.repository_url}:latest"
   container_port     = var.container_port

@@ -1,0 +1,11 @@
+# Points Grafana at Prometheus automatically, so the dashboard works the
+# moment the stack comes up rather than needing to be wired by hand.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true

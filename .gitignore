@@ -1,4 +1,35 @@
+# Terraform
+# State files record real infrastructure and often contain values that should
+# not be public. tfvars holds whatever was parameterised, which is where
+# secrets end up. The provider cache is large and machine specific.
 **.tfvars
 **.tfstate
 **.tfstate.*
 **/.terraform/
+crash.log
+crash.*.log
+
+# Credentials and keys. Nothing here should ever be committed.
+.env
+*.pem
+*.key
+credentials
+
+# Compiled Go binary. Produced by go build, rebuilt by the Dockerfile.
+src/product-service
+
+# Python
+__pycache__/
+*.pyc
+
+# Docker image archives
+*.tar
+
+# macOS
+.DS_Store
+
+# Note on what is deliberately NOT ignored:
+#   terraform/.terraform.lock.hcl  is committed on purpose. It pins provider
+#   versions so that anyone who clones this repo gets the same providers.
+#   locust/*.csv                   are experiment results, part of the writeup.
+#   screenshots/                   are deliverables.

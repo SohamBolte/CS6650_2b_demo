@@ -1,0 +1,39 @@
+# Local observability stack: the app, Prometheus scraping it, and Grafana
+# reading Prometheus. Kept local deliberately. Running Prometheus on ECS
+# means solving service discovery and persistent storage, which is a project
+# of its own and not the point of this exercise.
+
+services:
+  app:
+    build:
+      context: ../src
+    container_name: product-api
+    ports:
+      - "8080:8080"
+
+  prometheus:
+    image: prom/prometheus:v2.53.2
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      # No login prompt. This is a local throwaway stack, and having to log in
+      # before taking a screenshot is friction for no benefit.
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus

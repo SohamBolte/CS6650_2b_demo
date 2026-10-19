@@ -1,20 +1,31 @@
-FROM golang:1.24-alpine  AS build
-RUN apk add --no-cache git
+# Stage 1: build the binary.
+#
+# The builder runs natively on whatever machine you are on, which on an Apple
+# Silicon Mac is arm64. GOARCH=amd64 cross-compiles the output for Fargate,
+# which only runs amd64. Cross-compiling is far faster than emulating an
+# amd64 builder, and Go makes it a one-word change.
+FROM golang:1.27 AS builder
 
-WORKDIR /src
+WORKDIR /app
+
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-# disable cgo, target linux, static link
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o server .
 
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o product-service .
 
-WORKDIR /app
-COPY --from=build /src/server .
+# Stage 2: ship only the binary.
+#
+# This stage is pinned to linux/amd64 so the final image is an amd64 image
+# even when built on an arm64 Mac. Without this pin the image would be arm64
+# and the Fargate task would fail to start with an exec format error.
+FROM --platform=linux/amd64 alpine:latest
+
+WORKDIR /root/
+
+COPY --from=builder /app/product-service .
 
 EXPOSE 8080
-ENTRYPOINT ["./server"]
+
+CMD ["./product-service"]
