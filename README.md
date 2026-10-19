@@ -1,4 +1,4 @@
-# CS6650 Homework 5 — Product API on ECS, load tested and instrumented
+# CS6650 Homework 5: Product API on ECS, load tested and instrumented
 
 Soham Santra. Forked from `RuidiH/CS6650_2b_demo` and adapted to deploy a
 Product API implemented against the course OpenAPI specification.
@@ -90,7 +90,7 @@ terraform destroy
 
 ---
 
-## Part II — The Product API
+## Part II: The Product API
 
 ### Two readings of the specification, and which one this implements
 
@@ -123,7 +123,7 @@ instead, so `nil` means absent and `0` means zero. The test suite includes a
 
 ### Where the status codes come from
 
-`GET /products/{productId}` defines only 200, 404 and 500 — no 400. So a
+`GET /products/{productId}` defines only 200, 404 and 500, with no 400. So a
 request for `/products/abc` has no 400 available and is reported as 404.
 `POST .../details` does define a 400, so the same malformed ID is a 400 there.
 The same mistake maps to two different codes because the contract says so, not
@@ -227,7 +227,7 @@ RWMutex is bad at writes, and this workload is the opposite shape.
 
 ---
 
-## Part III — Terraform
+## Part III: Terraform
 
 ### What each file does
 
@@ -262,7 +262,7 @@ and the task role (used by the application itself *while* running).
    These were changed before the first apply, because changing `service_name`
    afterwards forces Terraform to destroy and recreate the cluster.
 4. **A missing dependency was added.** `module.ecs` referenced
-   `module.ecr.repository_url`, so it waited for the *repository* — but nothing
+   `module.ecr.repository_url`, so it waited for the *repository*, but nothing
    made it wait for `docker_registry_image.app`, the actual *push*. Terraform
    could legally start the service before the image existed. The service
    retries until the pull succeeds, so it self-heals, but the gap is real:
@@ -320,7 +320,7 @@ down.
 
 ---
 
-## Part IV — Load testing
+## Part IV: Load testing
 
 All runs target the deployed service at `http://54.173.204.114:8080` from a
 MacBook Air in Boston. `locust/locustfile.py` defines three user classes with
@@ -340,7 +340,7 @@ metrics, which is what the Part V error panel needs.
 product IDs collapse into one row rather than splitting the statistics.
 
 **Think time.** `between(0.1, 0.5)` for the realistic runs. `constant(0)` for
-`StressUser`, which is what makes the stress test possible at all — see below.
+`StressUser`, which is what makes the stress test possible at all. See below.
 
 ### Results
 
@@ -372,7 +372,7 @@ The throughput was simply the load generator's own arithmetic:
 **The client, not the server, was the bottleneck**, and no amount of extra
 users with think time would have changed that. This is why `StressUser` exists
 with `wait_time = constant(0)`. Removing think time alone took throughput from
-143 RPS to 3,337 RPS — a 23x increase against the same server.
+143 RPS to 3,337 RPS, a 23x increase against the same server.
 
 ### Where the server started to struggle
 
@@ -432,8 +432,8 @@ Runs 2 and 3, identical load, only the HTTP client changed:
 | | HttpUser | FastHttpUser | Difference |
 |---|---|---|---|
 | RPS | 143.6 | 145.1 | +1% |
-| Median | 33ms | 30ms | **−3ms** |
-| Average | 44.91ms | 42.54ms | **−2.4ms** |
+| Median | 33ms | 30ms | **-3ms** |
+| Average | 44.91ms | 42.54ms | **-2.4ms** |
 | p95 | 110ms | 110ms | none |
 | p99 | 120ms | 120ms | none |
 | Min | 18ms | 18ms | none |
@@ -482,7 +482,7 @@ the fix found the real one.**
 
 ---
 
-## Part V — Observability
+## Part V: Observability
 
 The server exposes `/metrics` in Prometheus format and emits one structured
 JSON log line per request. Both come from the same middleware and the same
@@ -497,7 +497,7 @@ docker compose up --build
 
 - App: `http://localhost:8080`
 - Prometheus: `http://localhost:9090` (check `/targets` says UP)
-- Grafana: `http://localhost:3000` — dashboard "Product API - RED" is
+- Grafana: `http://localhost:3000`. The dashboard "Product API - RED" is
   provisioned automatically, no login
 
 Kept local deliberately, as the assignment directs. Prometheus service
@@ -526,7 +526,7 @@ first bucket and every quantile would be meaningless. The buckets used are
 ### The dashboard
 
 `screenshots/part5-grafana-red.png` shows idle, then a 50-user 3-minute Locust
-run, then idle again — flat, spike, flat on all three signals.
+run, then idle again: flat, spike, flat on all three signals.
 
 Three things worth reading in it:
 
@@ -541,7 +541,7 @@ Alerts belong on deviation from normal, not on the presence of errors.
 
 **The slowest endpoint is `/metrics` itself.** The product routes sit on the
 floor at sub-millisecond, while p95 of `/metrics` runs around 12ms idle and
-jumps to **37ms under load** — roughly 3x. Under load the histogram fills more
+jumps to **37ms under load**, roughly 3x. Under load the histogram fills more
 buckets and more label combinations, so each scrape has more series to
 serialise. Observing the system costs more than running it. This was not
 planned, and it is a good argument for keeping metric cardinality low.
@@ -562,7 +562,7 @@ is what you aggregate on and the concrete path is what you debug with.
 
 The excerpt also caught something unplanned. The first ten lines of the run
 range from 2.9 to 23.4ms, all within 5ms of each other, and from line eleven
-onward everything sits near 0.1ms — roughly a **200x drop**. That is the cold
+onward everything sits near 0.1ms, roughly a **200x drop**. That is the cold
 start: the first wave of requests against a server that has never served one.
 The first measurement of anything is never the real one.
 
@@ -602,16 +602,16 @@ the specification drew the boundaries. They have genuinely different needs,
 which is the argument for separating them rather than a preference for
 microservices.
 
-- **Products** — read-heavy, rarely written, tolerates staleness. Cache
+- **Products**: read-heavy, rarely written, tolerates staleness. Cache
   aggressively, CDN in front, many stateless replicas. This carries most of the
   traffic and is the easy part.
-- **Shopping Cart** — per-user state with no cross-user contention. Shard by
+- **Shopping Cart**: per-user state with no cross-user contention. Shard by
   `customer_id`; each shard is independent.
-- **Warehouse** — the hard one. `/warehouse/reserve` is the only place in the
+- **Warehouse**: the hard one. `/warehouse/reserve` is the only place in the
   file where two users genuinely contend for the same row, and two people
   reserving the last unit must not both succeed. That needs a real transaction
   against a single authority. Do not shard the thing that must be serialised.
-- **Payments** — must be idempotent. A timeout followed by a client retry must
+- **Payments**: must be idempotent. A timeout followed by a client retry must
   not charge the card twice. Every request carries an idempotency key and the
   server remembers which keys it has seen.
 
@@ -644,7 +644,7 @@ Three consequences, each with evidence in this repo:
 **The order is never written down.** The ECS module is created after ECR purely
 because `main.tf` references `module.ecr.repository_url`. Terraform builds a
 dependency graph from references. The one place that graph was *missing* an
-edge — the image push — had to be fixed with an explicit `depends_on`, which is
+edge, the image push, had to be fixed with an explicit `depends_on`, which is
 itself evidence that the rest was inferred.
 
 **It is idempotent.** `terraform apply` run twice does nothing the second time,
